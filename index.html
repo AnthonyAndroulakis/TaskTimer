@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Task Timer</title>
+  <link href="style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  Points: <div id="points" style="display:inline">0.0</div><span>&nbsp&nbsp&nbsp</span><input type="button" value=" Reset Points " id="resetPointsBut" onclick="resetPoints()"></input>
+  </br>
+  Task:
+  <textarea type="text" id="theInput"></textarea>
+  <div id="timeInput" class="shown">
+    <input type="number" id="hours" style="width: 30px;" min="0" max="60" data-component="hour" />
+    <span>h&nbsp</span>
+
+    <input type="number" id="minutes" style="width: 30px;" min="0" max="60" data-component="minute" />
+    <span>m&nbsp</span>
+    <input type="number" id="seconds" style="width: 30px;" min="0" max="60" data-component="second" />
+    <span>s&nbsp&nbsp&nbsp</span>
+  </div>
+  <div class="hidden" id="timer">00:00:00</div>
+  <div style="border:1px solid black; display:inline;">fixed time?<input type="checkbox" id="isFixed"></div>
+  <span>&nbsp&nbsp&nbsp</span>
+  <input type="button" value=" Go " id="theButton" onclick="start()"></input>
+
+  <script src="easytimer.min.js"></script>
+  <script src="script.js"></script>
+</body>
+
+</html>
