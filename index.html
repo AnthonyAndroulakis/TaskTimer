@@ -9,10 +9,14 @@
 </head>
 
 <body>
-  Points: <div id="points" style="display:inline">0.0</div><span>&nbsp&nbsp&nbsp</span><input type="button" value=" Reset Points " id="resetPointsBut" onclick="resetPoints()"></input>
+  Points: <div id="points" style="display:inline">0.0</div><span>&nbsp&nbsp&nbsp</span><input type="button" value=" Reset Points " id="resetPointsBut" onclick="if (confirm('Are you sure you want to reset your points?')) updatePoints(0)"></input>
+  <input class="hidden" type="button" value="Pause" id="pauseButton" onclick="pause()" style="background-color: yellow; border-radius: 5px;"></input>
+  <input class="hidden" type="button" value="Cancel" id="stopButton" onclick="cancel()" style="background-color: red; border-radius: 5px;"></input>
+  </br>
   </br>
   Task:
   <textarea type="text" id="theInput"></textarea>
+  <span>&nbsp&nbsp&nbsp</span>
   <div id="timeInput" class="shown">
     <input type="number" id="hours" style="width: 30px;" min="0" max="60" data-component="hour" />
     <span>h&nbsp</span>
@@ -20,14 +24,28 @@
     <input type="number" id="minutes" style="width: 30px;" min="0" max="60" data-component="minute" />
     <span>m&nbsp</span>
     <input type="number" id="seconds" style="width: 30px;" min="0" max="60" data-component="second" />
-    <span>s&nbsp&nbsp&nbsp</span>
+    <span>s</span>
   </div>
   <div class="hidden" id="timer">00:00:00</div>
-  <div style="border:1px solid black; display:inline;">fixed time?<input type="checkbox" id="isFixed"></div>
   <span>&nbsp&nbsp&nbsp</span>
-  <input type="button" value=" Go " id="theButton" onclick="start()"></input>
+  
+  <table style="display:inline">
+    <tbody id="ftvtTable">
+        <tr>
+            <td>
+              <input type="radio" id="FT" name="timemode" value="fixed">
+              <label for="FT">fixed</label></br>
+              <input type="radio" id="VT" name="timemode" value="variable" checked>
+              <label for="VT">variable&nbsp&nbsp&nbsp</label>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-  <script src="easytimer.min.js"></script>
+  <span>&nbsp&nbsp&nbsp</span>
+  <input type="button" value="Go" id="theButton" onclick="start()";"></input>
+
+  <script src="timer.js"></script>
   <script src="script.js"></script>
 </body>
 
