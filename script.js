@@ -21,13 +21,15 @@ renderPoints();
 
 document.addEventListener('secondsUpdated', (e) => renderTime(e.seconds));
 
-if (localStorage.getItem('task')) {
+if (localStorage.getItem('task')) { //if was running before
   var task = JSON.parse(localStorage.getItem('task'));
   taskInputEl.value = task.name;
   ftEl.checked = task.FT;
   vtEl.checked = !task.FT;
   timer = new Timer({seconds: task.duration}, {startTime: task.startTime, pastZero: !task.FT});
   start();
+} else if (!localStorage.getItem('lastStopped')) { //if was not running before && was not stopped before (ie, first time running)
+  localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
 }
 
 function clearInputs() {
@@ -55,17 +57,20 @@ function switchElements() {
   showHide(stopButtonEl, running);
   showHide(pauseButtonEl, running);
 
-  taskInputEl.disabled = !taskInputEl.disabled;
+  taskInputEl.disabled = running;
   buttonEl.value = running ? "Done" : "Go";
 }
 
 function cancel() {
-  running = !running;
+  running = false;
 
   switchElements();
+  buttonEl.disabled = false;
 
   //remove task from localstorage
   localStorage.removeItem('task');
+  //add lastStopped to localstorage
+  localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
 
   //set styling back to normal
   ftEl.disabled = false;
@@ -88,10 +93,12 @@ function pause() {
     timer.pause();
     document.title = "paused";
     pauseButtonEl.value = "Resume";
+    localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
   } else {
     buttonEl.disabled = false;
     timer.start();
     pauseButtonEl.value = "Pause";
+    localStorage.removeItem('lastStopped');
   }
   running = !running;
 }
@@ -122,7 +129,7 @@ function score() {
   } else {
     var efficiency = (1 - (elapsedMinutes / (estimateMinutes))) * estimateMinutes;
     var effectiveness = 2; //todo figure out how to set/calculate this
-    points += efficiency * effectiveness + 1;
+    points += efficiency * effectiveness + 1/60;
   }
   if (points < 0)
     points = 0;
@@ -167,6 +174,9 @@ function start() {
 
     //start timer
     timer.start();
+
+    //remove lastStopped from localstorage
+    localStorage.removeItem('lastStopped');
   } else {
     //remove task from localstorage
     localStorage.removeItem('task');
@@ -187,18 +197,23 @@ function start() {
     //score task
     console.log('Seconds elapsed:', timer.elapsed);
     score();
+    
+    //add lastStopped to localstorage
+    localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
   }
 }
 
-//to incentivise doing tasks and not taking too long breaks
-//points are lost at a rate of 2 per minute if not doing a task
-setInterval(function() {
+//to incentivise doing tasks and penalize taking too long breaks
+//points are lost at a rate of ~2 per minute if not doing a task
+(function check() {
   if (!running) {
-    if (points > 2) {
-      points -= 2;
-    } else {
-      points = 0;
-    }
-    updatePoints(points);
+    var lastStopped = Number(localStorage.getItem('lastStopped'));
+    var now = (new Date()).getTime()/1000;
+    var diff = Math.floor((now - lastStopped) / 60);
+    var currPoints = Number(localStorage.getItem('points'))
+    localStorage.setItem('lastStopped', now.toString());
+    console.log(currPoints, diff)
+    updatePoints(Math.max(currPoints - diff*2, 0));
   }
-}, 1000*60);
+  setTimeout(check, 1000*60);
+})();

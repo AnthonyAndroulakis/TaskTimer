@@ -21,12 +21,12 @@ class Timer {
         var hours = duration.hours || 0;
         var minutes = duration.minutes || 0;
         var seconds = duration.seconds || 0;
-        this.duration = this.seconds = hours * 3600 + minutes * 60 + seconds;
+        this.duration = this.seconds = parseInt(hours * 3600 + minutes * 60 + seconds);
 
         //start time in unix seconds + time elapsed in seconds
         if (this.options.startTime) {
-            this.startTime = this.options.startTime;
-            this.elapsed = (new Date().getTime())/1000 - this.startTime;
+            this.startTime = parseInt(this.options.startTime);
+            this.elapsed = parseInt((new Date().getTime())/1000 - this.startTime);
             this.seconds -= this.elapsed;
             if (!this.pastZero && this.seconds < 0) {
                 this.elapsed = this.duration;
@@ -58,10 +58,12 @@ class Timer {
      * countdown function
     */
     _countdown() {
-        this.seconds--;
-        this.elapsed++;
+        this.elapsed = parseInt((new Date().getTime())/1000 - this.startTime);
+        this.seconds = this.duration - this.elapsed;
         this._dispatchSecondsUpdated();
-        if (this.seconds == 0 && !this.pastZero) {
+        if (this.seconds <= 0 && !this.pastZero) {
+            this.elapsed = this.duration;
+            this.seconds = 0;
             this.pause();
         }
     }
@@ -71,7 +73,7 @@ class Timer {
     */
     start() {
         this._dispatchSecondsUpdated();
-        if (this.seconds == 0 && !this.pastZero)
+        if (this.seconds <= 0 && !this.pastZero)
             return;
         this.timer = setInterval(this._countdown, 1000);
     }
