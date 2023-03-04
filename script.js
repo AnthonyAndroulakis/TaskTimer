@@ -1,48 +1,42 @@
+//be only able to do 1 task at a time
+//- way to add new tasks onto "queue"
+//- should save items todo in json, items already done do not need to be saved, score can be saved but not in json
+//- should have some sort of simple js timer
+
 var running = false;
-var timer;
+var timer = new easytimer.Timer();
 
 var taskInputEl = document.getElementById('theInput');
 var timeInputEl = document.getElementById('timeInput');
 var timerEl = document.getElementById('timer');
 var buttonEl = document.getElementById('theButton');
-var stopButtonEl = document.getElementById('stopButton');
-var pauseButtonEl = document.getElementById('pauseButton');
-var ftEl = document.getElementById('FT');
-var vtEl = document.getElementById('VT');
-var ftvtTable = document.getElementById('ftvtTable');
+var isFixedEl = document.getElementById('isFixed');
 var pointsEl = document.getElementById('points');
+var cancelTaskDiv = document.getElementById('cancelTaskDiv');
 
 var h = document.getElementById('hours');
 var m = document.getElementById('minutes');
 var s = document.getElementById('seconds');
 
+var startSeconds = 0;
+var totalSecondsTaken = 0;
 var points = Number(localStorage.getItem('points')) || 0;
 renderPoints();
 
-document.addEventListener('secondsUpdated', (e) => renderTime(e.seconds));
+timer.addEventListener('secondsUpdated', function(e) {
+  renderTime();
+  var seconds = timer.getTotalTimeValues().seconds;
+  if (seconds == 0) {
+    timer.stop()
+    if (!isFixedEl.checked) {
+      totalSecondsTaken += startSeconds;
+      timer.start({ countdown: false });
+    }
+  }
+});
 
-if (localStorage.getItem('task')) { //if was running before
-  var task = JSON.parse(localStorage.getItem('task'));
-  taskInputEl.value = task.name;
-  ftEl.checked = task.FT;
-  vtEl.checked = !task.FT;
-  timer = new Timer({seconds: task.duration}, {startTime: task.startTime, pastZero: !task.FT});
-  start();
-} else if (!localStorage.getItem('lastStopped')) { //if was not running before && was not stopped before (ie, first time running)
-  localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
-}
-
-function clearInputs() {
-  taskInputEl.value = "";
-  h.value = "";
-  m.value = "";
-  s.value = "";
-  ftEl.checked = false;
-  vtEl.checked = true;
-}
-
-function showHide(el, show=true) {
-  if (show) {
+function showHide(el) {
+  if (el.classList.contains("hidden")) {
     el.classList.remove("hidden");
     el.classList.add("shown");
   } else {
@@ -51,169 +45,113 @@ function showHide(el, show=true) {
   }
 }
 
-function switchElements() {
-  showHide(timeInputEl, !running);
-  showHide(timerEl, running);
-  showHide(stopButtonEl, running);
-  showHide(pauseButtonEl, running);
+function switchElements(started) {
+  showHide(timeInputEl);
+  showHide(timerEl);
+  showHide(cancelTaskDiv);
 
-  taskInputEl.disabled = running;
-  buttonEl.value = running ? "Done" : "Go";
+  isFixedEl.disabled = started;
+  taskInputEl.disabled = started;
+  buttonEl.value = started ? " Done " : " Go ";
 }
 
-function cancel() {
+function cancelTask() {
   running = false;
 
-  switchElements();
-  buttonEl.disabled = false;
+  switchElements(running);
 
-  //remove task from localstorage
-  localStorage.removeItem('task');
-  //add lastStopped to localstorage
-  localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
-
-  //set styling back to normal
-  ftEl.disabled = false;
-  vtEl.disbled = false;
-  ftvtTable.style.backgroundColor = 'transparent';
-  ftvtTable.style.opacity = 1;
-
-  //clear inputs
-  clearInputs();
-
-  //stop timer
-  timer.pause()
+  timer.stop();
   document.title = "Task Timer";
-  console.log('Seconds elapsed:', timer.elapsed);
+  h.value = '';
 }
 
-function pause() {
-  if (running) {
-    buttonEl.disabled = true;
-    timer.pause();
-    document.title = "paused";
-    pauseButtonEl.value = "Resume";
-    localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
-  } else {
-    buttonEl.disabled = false;
-    timer.start();
-    pauseButtonEl.value = "Pause";
-    localStorage.removeItem('lastStopped');
+function resetPoints() {
+  if (confirm('Are you sure you want to reset your points?')) {
+    points = 0;
+    localStorage.setItem('points', points.toString());
+    renderPoints();
   }
-  running = !running;
-}
-
-function updatePoints(pts) {
-  points = pts;
-  localStorage.setItem('points', pts.toString());
-  renderPoints();
 }
 
 function renderPoints() {
-  rounded = Math.round(points * 10) / 10;
-  pointsEl.textContent = rounded.toFixed(1);
+  rounded = Math.round(points * 100) / 100;
+  pointsEl.textContent = rounded.toFixed(2);
 }
 
 function renderTime() {
-  timerEl.innerHTML = timer.toString()
-  document.title = timer.toString("short");
+  var c = timer.getConfig().countdown;
+  var timerText = timer.getTimeValues().toString()
+  var seconds = timer.getTotalTimeValues().seconds;
+  timerEl.innerHTML = c ? timerText : '-' + timerText;
+  if (seconds / 3600 > 1) {
+    timerText = timerText;
+  } else if (seconds / 60 > 1) {
+    timerText = timerText.slice(3);
+  } else {
+    timerText = timerText.slice(6);
+  }
+  document.title = c ? timerText : '-' + timerText;
 }
 
-function score() {
-  var elapsedMinutes = timer.elapsed / 60;
-  var estimateMinutes = timer.duration / 60;
-  if (estimateMinutes == 0)
-    estimateMinutes = 1/60;
-  if (ftEl.checked) {
-    points += elapsedMinutes;
+function score(timeTaken, estimate, isFixed) {
+  var timeTakenMinutes = timeTaken / 60;
+  var estimateMinutes = estimate / 60;
+  if (isFixed) {
+    var isMeditation = taskInputEl.value.trim().toLowerCase() == "meditate" || taskInputEl.value.trim().toLowerCase() == "meditation";
+    var mulitplier = isMeditation ? 10 : 1;
+    points += timeTakenMinutes * mulitplier;
   } else {
-    var efficiency = (1 - (elapsedMinutes / (estimateMinutes))) * estimateMinutes;
-    var effectiveness = 2; //todo figure out how to set/calculate this
-    points += efficiency * effectiveness + 1/60;
+    var efficiency = (1 - (timeTakenMinutes / (estimateMinutes))) * estimateMinutes + 1 / 60;
+    var effective = 4;
+    points += efficiency * effective;
   }
   if (points < 0)
     points = 0;
-  updatePoints(points);
+  localStorage.setItem('points', points.toString());
+  renderPoints()
 }
 
 function start() {
-  var duration = {
-    hours: Number(h.value) || 0,
-    minutes: Number(m.value) || 0,
-    seconds: Number(s.value) || 0
-  }
+  running = !running;
 
-  //if timer is not running, task is not in localstorage, and duration in seconds is 0, exit
-  //if timer is not in localstorage, this means that there was no task previously running
-  if (!running && !localStorage.getItem('task') && Object.values(duration).reduce((a,b)=>a+b) == 0) {
+  var hours = Number(h.value);
+  var minutes = Number(m.value);
+  var seconds = Number(s.value);
+
+  if (hours + minutes + seconds == 0) {
+    running = !running;
     return
   }
 
-  running = !running;
-
-  switchElements();
+  switchElements(running);
 
   if (running) {
-    //create timer if task does not exist in localstorage
-    if (!localStorage.getItem('task')) {
-      timer = new Timer(duration, { countdown: true, pastZero: !ftEl.checked });
-      //save task to localstorage
-      var currentTask = {
-        name: taskInputEl.value,
-        duration: timer.duration,
-        startTime: timer.startTime,
-        FT: ftEl.checked
-      }
-      localStorage.setItem('task', JSON.stringify(currentTask));
-    }
-    //set styling
-    ftEl.disabled = true;
-    vtEl.disbled = true;
-    ftvtTable.style.backgroundColor = '#d8dcdc';
-    ftvtTable.style.opacity = 0.7;
-
-    //start timer
-    timer.start();
-
-    //remove lastStopped from localstorage
-    localStorage.removeItem('lastStopped');
+    //if start task
+    timer.start({ countdown: true, startValues: { hours: hours, minutes: minutes, seconds: seconds } });
+    startSeconds = timer.getTotalTimeValues().seconds;
+    renderTime();
   } else {
-    //remove task from localstorage
-    localStorage.removeItem('task');
-
-    //set styling back to normal
-    ftEl.disabled = false;
-    vtEl.disbled = false;
-    ftvtTable.style.backgroundColor = 'transparent';
-    ftvtTable.style.opacity = 1;
-
-    //clear inputs
-    clearInputs();
-
-    //stop timer
-    timer.pause()
+    //if stop task
+    if (totalSecondsTaken == 0) {
+      totalSecondsTaken = startSeconds - timer.getTotalTimeValues().seconds;
+    } else {
+      totalSecondsTaken += timer.getTotalTimeValues().seconds;
+    }
+    timer.stop()
     document.title = "Task Timer";
-
-    //score task
-    console.log('Seconds elapsed:', timer.elapsed);
-    score();
-    
-    //add lastStopped to localstorage
-    localStorage.setItem('lastStopped', ((new Date()).getTime()/1000).toString());
+    console.log('Seconds elapsed:', totalSecondsTaken);
+    score(totalSecondsTaken, startSeconds, isFixedEl.checked)
+    totalSecondsTaken = 0;
+    h.value = '';
   }
 }
 
-//to incentivise doing tasks and penalize taking too long breaks
-//points are lost at a rate of ~2 per minute if not doing a task
-(function check() {
+setInterval(() => {
   if (!running) {
-    var lastStopped = Number(localStorage.getItem('lastStopped'));
-    var now = (new Date()).getTime()/1000;
-    var diff = Math.floor((now - lastStopped) / 60);
-    var currPoints = Number(localStorage.getItem('points'))
-    localStorage.setItem('lastStopped', now.toString());
-    console.log(currPoints, diff)
-    updatePoints(Math.max(currPoints - diff*2, 0));
+    points -= 40 / 60;
+    if (points < 0)
+      points = 0;
+    localStorage.setItem('points', points.toString());
+    renderPoints()
   }
-  setTimeout(check, 1000*60);
-})();
+}, 20 * 1000)
